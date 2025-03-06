@@ -7,19 +7,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { format, set } from "date-fns"
+import { format, set, isWithinInterval, parseISO } from "date-fns"
 import { Plus, Filter, X } from "lucide-react"
 import { useExpenses } from "@/hooks/useExpenses"
 import Loading from "../loading"
 import { Card } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Textarea } from "@/components/ui/textarea"
-import { toast } from "@/hooks/use-toast"
+import { Dialog, DialogContent} from "@/components/ui/dialog"
 import EditExpense from "./editExpenseform"
+
+interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: Date;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export default function ExpensesPage() {
   const { data: session, status } = useSession()
@@ -32,6 +37,7 @@ export default function ExpensesPage() {
     minAmount: "",
     maxAmount: "",
   })
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([])
   const [editingExpense, setEditingExpense] = useState({
     category: "",
     amount: 0,
@@ -42,11 +48,43 @@ export default function ExpensesPage() {
 
   const { expenses, loading, fetchExpenses, deleteExpense } = useExpenses()
 
-  // Apply filters to fetchExpenses
+  // Apply filters to expenses
   const applyFilters = () => {
-    if(filters.category !== "") {
-      fetchExpenses(1, 50, filters.category)
+    let filtered = [...expenses]
+
+    if (filters.category && filters.category !== "all") {
+      filtered = filtered.filter(expense => expense.category === filters.category)
     }
+
+    if (filters.startDate && filters.endDate) {
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date)
+        return isWithinInterval(expenseDate, {
+          start: parseISO(filters.startDate),
+          end: parseISO(filters.endDate)
+        })
+      })
+    } else if (filters.startDate) {
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date)
+        return expenseDate >= parseISO(filters.startDate)
+      })
+    } else if (filters.endDate) {
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date)
+        return expenseDate <= parseISO(filters.endDate)
+      })
+    }
+
+    if (filters.minAmount) {
+      filtered = filtered.filter(expense => expense.amount >= Number(filters.minAmount))
+    }
+
+    if (filters.maxAmount) {
+      filtered = filtered.filter(expense => expense.amount <= Number(filters.maxAmount))
+    }
+
+    setFilteredExpenses(filtered)
   }
 
   // Reset all filters
@@ -58,15 +96,19 @@ export default function ExpensesPage() {
       minAmount: "",
       maxAmount: "",
     })
-    fetchExpenses() // Fetch all expenses without filters
+    setFilteredExpenses(expenses)
   }
 
   useEffect(() => {
     if (fetchExpenses) {
       fetchExpenses()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    //eslint-disable-next-line
   }, [])
+
+  useEffect(() => {
+    setFilteredExpenses(expenses)
+  }, [expenses])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -77,7 +119,7 @@ export default function ExpensesPage() {
   const handleDelete = async (id: string) => {
     try {
       await deleteExpense(id)
-      applyFilters() // Re-apply current filters after deletion
+      applyFilters()
     } catch (error) {
       console.error("Failed to delete expense:", error)
     }
@@ -107,11 +149,11 @@ export default function ExpensesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="food">Food</SelectItem>
-                  <SelectItem value="transport">Transport</SelectItem>
-                  <SelectItem value="utilities">Utilities</SelectItem>
-                  <SelectItem value="entertainment">Entertainment</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="FOOD">Food</SelectItem>
+                  <SelectItem value="TRANSPORT">Transport</SelectItem>
+                  <SelectItem value="UTILITIES">Utilities</SelectItem>
+                  <SelectItem value="ENTERTAINMENT">Entertainment</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -180,8 +222,8 @@ export default function ExpensesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {expenses.length > 0 ? (
-              expenses.map((expense) => (
+            {filteredExpenses.length > 0 ? (
+              filteredExpenses.map((expense) => (
                 <TableRow key={expense.id}>
                   <TableCell>{format(new Date(expense.date), "MMM d, yyyy")}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{expense.description}</TableCell>
