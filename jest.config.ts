@@ -2,7 +2,7 @@ import type { Config } from "jest";
 
 const config: Config = {
   preset: "ts-jest",
-  testEnvironment: "node", // Use "jsdom" for component tests
+  testEnvironment: "jsdom", // Use "jsdom" for component tests
   transform: {
     "^.+\\.tsx?$": "ts-jest",
   },

@@ -24,6 +24,8 @@ import { Progress } from "@/components/Progress";
 import { Plus } from "lucide-react";
 import { useBudgets } from "@/hooks/useBudgets";
 import Loading from "../loading";
+import { toast } from "@/hooks/use-toast"; 
+import { AxiosError } from "axios";
 
 interface newBudget {
   category: "FOOD" | "ENTERTAINMENT" | "TRANSPORT" | "OTHER" | "UTILITIES";
@@ -42,6 +44,8 @@ export default function BudgetsPage() {
     year: new Date().getFullYear(),
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const {
     updateBudget,
@@ -53,9 +57,9 @@ export default function BudgetsPage() {
   } = useBudgets();
 
   useEffect(() => {
-    fetchBudgets();
+    fetchBudgets(selectedYear, selectedMonth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedYear, selectedMonth]);
   
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -80,6 +84,13 @@ export default function BudgetsPage() {
       });
     } catch (error) {
       console.error("Failed to create budget:", error);
+      if(error instanceof AxiosError && error.response?.data.error.includes("Budget already exists")){
+        toast({
+          title: "Budget already exists",
+          description: "You already have a budget for this category, month, and year.",
+          variant: "destructive",
+        })
+      }
     }
   };
 
@@ -96,88 +107,123 @@ export default function BudgetsPage() {
     return <Loading />;
   }
 
-
-
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Budget Management</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Budget
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Budget</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Select
-                value={newBudget.category}
-                onValueChange={(value) =>
-                  setNewBudget({
-                    ...newBudget,
-                    category: value as newBudget["category"],
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FOOD">Food</SelectItem>
-                  <SelectItem value="TRANSPORT">Transport</SelectItem>
-                  <SelectItem value="UTILITIES">Utilities</SelectItem>
-                  <SelectItem value="ENTERTAINMENT">Entertainment</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
-                </SelectContent>
-              </Select>
+        <div className="flex gap-4">
+          <Select
+            value={selectedMonth.toString()}
+            onValueChange={(value) => setSelectedMonth(parseInt(value))}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Select Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i + 1} value={(i + 1).toString()}>
+                  {new Date(0, i).toLocaleString("default", { month: "long" })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              <Input
-                type="number"
-                placeholder="Amount"
-                value={newBudget.amount}
-                onChange={(e) =>
-                  setNewBudget({ ...newBudget, amount: e.target.value })
-                }
-              />
+          <Select
+            value={selectedYear.toString()}
+            onValueChange={(value) => setSelectedYear(parseInt(value))}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - 2 + i;
+                return (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={newBudget.month.toString()}
-                onValueChange={(value) =>
-                  setNewBudget({ ...newBudget, month: parseInt(value) })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <SelectItem key={i + 1} value={(i + 1).toString()}>
-                      {new Date(0, i).toLocaleString("default", {
-                        month: "long",
-                      })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Input
-                type="number"
-                placeholder="Year"
-                value={newBudget.year}
-                onChange={(e) =>
-                  setNewBudget({ ...newBudget, year: parseInt(e.target.value) })
-                }
-              />
-
-              <Button type="submit" className="w-full">
-                Create Budget
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Add Budget
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Budget</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Select
+                  value={newBudget.category}
+                  onValueChange={(value) =>
+                    setNewBudget({
+                      ...newBudget,
+                      category: value as newBudget["category"],
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FOOD">Food</SelectItem>
+                    <SelectItem value="TRANSPORT">Transport</SelectItem>
+                    <SelectItem value="UTILITIES">Utilities</SelectItem>
+                    <SelectItem value="ENTERTAINMENT">Entertainment</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  type="number"
+                  placeholder="Amount"
+                  value={newBudget.amount}
+                  onChange={(e) =>
+                    setNewBudget({ ...newBudget, amount: e.target.value })
+                  }
+                />
+
+                <Select
+                  value={newBudget.month.toString()}
+                  onValueChange={(value) =>
+                    setNewBudget({ ...newBudget, month: parseInt(value) })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <SelectItem key={i + 1} value={(i + 1).toString()}>
+                        {new Date(0, i).toLocaleString("default", {
+                          month: "long",
+                        })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  type="number"
+                  placeholder="Year"
+                  value={newBudget.year}
+                  onChange={(e) =>
+                    setNewBudget({ ...newBudget, year: parseInt(e.target.value) })
+                  }
+                />
+
+                <Button type="submit" className="w-full">
+                  Create Budget
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -185,7 +231,6 @@ export default function BudgetsPage() {
           <div className="text-center col-span-3 text-gray-500">No budgets found.</div>
         )}
         {budgets.map((budget) => (
-          
           <Card key={budget.id}>
             <CardHeader>
               <CardTitle className="flex justify-between items-center">

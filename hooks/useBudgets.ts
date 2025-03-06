@@ -22,6 +22,7 @@ export const useBudgets = () => {
 
   const fetchBudgets = async (
     year = new Date().getFullYear(), 
+    month= new Date().getMonth(),
     category?: string
   ) => {
     setLoading(true);
@@ -29,6 +30,7 @@ export const useBudgets = () => {
     try {
       const params = new URLSearchParams({
         year: year.toString(),
+        month: month.toString(),
         ...(category && { category })
       });
 
