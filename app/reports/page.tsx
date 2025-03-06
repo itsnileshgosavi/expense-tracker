@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useMonthlyExpenses, useCategoryExpenses } from "@/hooks/useExpenseReports"
+import { useMonthlyExpenses, useCategoryExpenses, useYearlyExpenses } from "@/hooks/useExpenseReports"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Bar,
@@ -23,6 +23,7 @@ import {
 import { Download } from "lucide-react"
 import Loading from "../loading"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useReports } from "@/hooks/useReports"
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#FF6384"]
 
@@ -33,10 +34,14 @@ export default function ReportsPage() {
 
   const { monthlyExpenses, fetchMonthlyExpenses, loading } = useMonthlyExpenses()
   const { categoryExpenses, fetchCategoryExpenses, loading: categoryLoading } = useCategoryExpenses()
+  const{yearlyExpenses, fetchYearlyExpenses, loading: yearlyLoading}=useYearlyExpenses()
+  const{report, fetchReport, loading: rLoading}=useReports()
 
   useEffect(() => {
     fetchMonthlyExpenses(Number(year))
     fetchCategoryExpenses(Number(year))
+    fetchYearlyExpenses()
+    fetchReport(Number(year))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year])
 
@@ -63,7 +68,7 @@ export default function ReportsPage() {
     }
   }
 
-  if (loading || categoryLoading) return <Loading />
+  if (loading || categoryLoading || yearlyLoading || rLoading) return <Loading />
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
@@ -126,6 +131,83 @@ export default function ReportsPage() {
             </ChartContainer>
           </CardContent>
         </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-xl sm:text-2xl">Yearly Expenses</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px] sm:h-[400px] p-2 sm:p-6">
+            <ChartContainer
+              config={{
+                amount: {
+                  label: "Amount (₹)",
+                  color: "hsl(var(--chart-2))",
+                },
+              }}
+              className="w-full h-full"
+            >
+              <BarChart
+                data={yearlyExpenses}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: 10,
+                  bottom: 20,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="year" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
+                <Legend wrapperStyle={{ fontSize: "12px", marginTop: "10px" }} />
+                <Bar dataKey="amount" fill="var(--color-amount)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-xl sm:text-2xl">Budget Utilization ({year})</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px] sm:h-[400px] p-2 sm:p-6">
+            <ChartContainer
+              config={{
+                amount: {
+                  label: "Budget (₹)",
+                  color: "hsl(var(--chart-3))",
+                },
+                percentage: {
+                  label: "Expense (₹)", 
+                  color: "hsl(var(--chart-4))",
+                },
+              }}
+              className="w-full h-full"
+            >
+              <BarChart
+                data={report?.budgetComparison}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: 10,
+                  bottom: 20,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="category" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                <ChartTooltip content={<ChartTooltipContent />} cursor={false} />
+                <Legend 
+                  wrapperStyle={{ fontSize: "12px", marginTop: "10px" }}
+                  payload={[
+                    { value: 'Total Budget', type: 'rect', color: 'var(--color-amount)' },
+                    { value: 'Total Expense', type: 'rect', color: 'var(--color-percentage)' }
+                  ]}
+                />
+                <Bar name="Total Budget" dataKey="budgetAmount" fill="var(--color-amount)" radius={[4, 4, 0, 0]} />
+                <Bar name="Total Expense" dataKey="actualExpense" fill="var(--color-percentage)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -144,7 +226,6 @@ export default function ReportsPage() {
                   innerRadius={0}
                   fill="#8884d8"
                   paddingAngle={1}
-                  label={({ name, value, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 >
                   {categoryExpenses.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

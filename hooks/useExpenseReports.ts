@@ -6,6 +6,10 @@ interface MonthlyExpense {
   month: string;
   amount: number;
 }
+interface YearlyExpenses {
+  year: string;
+  amount: number;
+}
 
 interface CategoryExpense {
   category: string;
@@ -33,6 +37,28 @@ export const useMonthlyExpenses = () => {
   };
 
   return { monthlyExpenses, loading, error, fetchMonthlyExpenses };
+};
+export const useYearlyExpenses = () => {
+  const [yearlyExpenses, setYearlyExpenses] = useState<YearlyExpenses[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchYearlyExpenses = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.get<YearlyExpenses[]>(`/api/reports/yearly`);
+      setYearlyExpenses(data);
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { yearlyExpenses, loading, error, fetchYearlyExpenses };
 };
 
 export const useCategoryExpenses = () => {

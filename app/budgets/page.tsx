@@ -110,8 +110,8 @@ export default function BudgetsPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Budget Management</h1>
-        <div className="flex gap-4">
+        <h1 className="text-xl lg:text-3xl font-bold">Budget Management</h1>
+        <div className="flex gap-4 flex-col-reverse lg:flex-row">
           <Select
             value={selectedMonth.toString()}
             onValueChange={(value) => setSelectedMonth(parseInt(value))}

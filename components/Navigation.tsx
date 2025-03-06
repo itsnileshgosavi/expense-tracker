@@ -3,16 +3,17 @@ import React from 'react';
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 const Navbar = () => {
   const { data: session } = useSession();
 
   return (
     <nav className="flex justify-between items-center p-4 bg-card shadow-md">
-      <Link href="/" className="text-xl font-bold text-primary">
+      <Link href="/" className="text-lg lg:text-xl font-bold text-primary">
         Finance Tracker
       </Link>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-1 lg:space-x-4 text-xs lg:text-lg">
         {session ? (
           <>
             <Link href="/expenses" className="hover:text-blue-600">
@@ -24,8 +25,8 @@ const Navbar = () => {
             <Link href="/reports" className="hover:text-blue-600">
               Reports
             </Link>
-            <Button onClick={() => signOut()} variant="destructive">
-              Logout
+            <Button size={'icon'} onClick={() => signOut()} variant="destructive">
+              <LogOut/>
             </Button>
           </>
         ) : (
